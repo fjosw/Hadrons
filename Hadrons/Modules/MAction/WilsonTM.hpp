@@ -37,6 +37,8 @@ BEGIN_HADRONS_NAMESPACE
 
 /******************************************************************************
  *                            TWilsonTM quark action                            *
+ * Note that the definitions of the twisted-mass in GRID and openQCD            *
+ * differ by a minus sign.                                                      *
  ******************************************************************************/
 BEGIN_MODULE_NAMESPACE(MAction)
 
