@@ -116,7 +116,7 @@ void TExternalLeg<FImpl>::execute(void)
         Gamma g5 = Gamma(Gamma::Algebra::Gamma5);
         average = g5 * adj(average) * g5;
     }
-    LOG(Message) << "Done comptuing average" << std::endl;
+    LOG(Message) << "Done computing average" << std::endl;
 
     LOG(Message) << "Saving output to '" << par().output << "'" << std::endl;
     saveResult(par().output, "external_leg", average);

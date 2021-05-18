@@ -72,7 +72,6 @@ public:
     // dependencies/products
     virtual std::vector<std::string> getInput(void);
     virtual std::vector<std::string> getOutput(void);
-    virtual SpinColourMatrix invertspincolmat(SpinColourMatrix &scmat);
     // execution
     virtual void execute(void);
 };
@@ -108,7 +107,7 @@ std::vector<std::string> TExternalLegAlt<FImpl>::getOutput(void)
 template <typename FImpl>
 void TExternalLegAlt<FImpl>::execute(void)
 {
-    LOG(Message) << "Computing inverse propagator '" << getName() << "' using"
+    LOG(Message) << "Computing propagator '" << getName() << "' using"
                  << " momentum '" << par().pIn << "'"
                  << std::endl;
     BinaryWriter                    writer(par().output);
@@ -131,7 +130,7 @@ void TExternalLegAlt<FImpl>::execute(void)
     {
         Real TwoPiL =  M_PI * 2.0 / latt_size[mu];
         LatticeCoordinate(coor,mu);
-        pdotxin = pdotxin +(TwoPiL * pIn[mu]) * coor;
+        pdotxin = pdotxin + (TwoPiL * pIn[mu]) * coor;
     }
     qIn = qIn * exp(-Ci * pdotxin); // phase corrections
 

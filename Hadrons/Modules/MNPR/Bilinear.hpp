@@ -168,7 +168,7 @@ void TBilinear<FImpl>::execute(void)
     pDotXOut=Zero();
     for (unsigned int mu = 0; mu < 4; ++mu)
     {
-        Real TwoPiL =  M_PI * 2.0/ latt_size[mu];
+        Real TwoPiL =  M_PI * 2.0 / latt_size[mu];
         LatticeCoordinate(xMu,mu);
         pDotXIn  = pDotXIn  + (TwoPiL * pIn[mu])  * xMu;
         pDotXOut = pDotXOut + (TwoPiL * pOut[mu]) * xMu;
@@ -190,13 +190,13 @@ void TBilinear<FImpl>::execute(void)
     // Also write the propagators to the outfile
     r.info.pIn  = par().pIn;
     r.info.pOut = " ";
-    r.corr.push_back( sum(qIn) );
+    r.corr.push_back( (1.0 / volume) * sum(qIn) );
     result.push_back(r);
     r.corr.erase(r.corr.begin());
 
     r.info.pIn  = " ";
     r.info.pOut = par().pOut;
-    r.corr.push_back( sum(g5*adj(qOut)*g5) );
+    r.corr.push_back( (1.0 / volume) * sum(g5*adj(qOut)*g5) );
     result.push_back(r);
     r.corr.erase(r.corr.begin());
 
