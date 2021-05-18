@@ -159,6 +159,11 @@ void TBilinear<FImpl>::execute(void)
     std::vector<Result>         result;
     Result                      r;
 
+    Real volume = 1.0;
+    for (int mu = 0; mu < Nd; mu++) {
+        volume *= latt_size[mu];
+    }
+
     pDotXIn=Zero();
     pDotXOut=Zero();
     for (unsigned int mu = 0; mu < 4; ++mu)
@@ -175,12 +180,26 @@ void TBilinear<FImpl>::execute(void)
     r.info.pOut = par().pOut;
     for (auto &G: Gamma::gall)
     {
-	r.info.gamma = G.g;
-	r.corr.push_back( sum(g5*adj(qOut)*g5*G*qIn) );
+    	r.info.gamma = G.g;
+    	r.corr.push_back( (1.0 / volume) * sum(g5*adj(qOut)*g5*G*qIn) );
         result.push_back(r);
-	//This is all still quite hacky - we probably want to think about the output format a little more!
-	r.corr.erase(r.corr.begin());
+    	//This is all still quite hacky - we probably want to think about the output format a little more!
+    	r.corr.erase(r.corr.begin());
     }
+
+    // Also write the propagators to the outfile
+    r.info.pIn  = par().pIn;
+    r.info.pOut = " ";
+    r.corr.push_back( sum(qIn) );
+    result.push_back(r);
+    r.corr.erase(r.corr.begin());
+
+    r.info.pIn  = " ";
+    r.info.pOut = par().pOut;
+    r.corr.push_back( sum(g5*adj(qOut)*g5) );
+    result.push_back(r);
+    r.corr.erase(r.corr.begin());
+
     //////////////////////////////////////////////////
     saveResult(par().output, "bilinear", result);
     LOG(Message) << "Complete. Writing results to " << par().output << std:: endl;

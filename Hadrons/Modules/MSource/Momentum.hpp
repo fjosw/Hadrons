@@ -122,6 +122,7 @@ void TMomentum<FImpl>::execute(void)
     Complex                    i(0.0,1.0);
 
     LOG(Message) << " " << std::endl;
+    src = Zero();
     //get the momentum from parameters
     p = strToVec<Real>(par().mom);
     C = Zero();
