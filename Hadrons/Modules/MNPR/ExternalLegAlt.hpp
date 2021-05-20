@@ -112,6 +112,7 @@ void TExternalLegAlt<FImpl>::execute(void)
                  << std::endl;
     BinaryWriter                    writer(par().output);
     auto                            &qIn    = envGet(PropagatorField, par().qIn);
+    LatticeSpinColourMatrix         qIn_phased(env().getGrid());
     std::vector<int>                pIn  = strToVec<int>(par().pIn);
     Coordinate                      latt_size = GridDefaultLatt();  
     LatticeComplex                  pdotxin(env().getGrid()), coor(env().getGrid());
@@ -132,9 +133,9 @@ void TExternalLegAlt<FImpl>::execute(void)
         LatticeCoordinate(coor,mu);
         pdotxin = pdotxin + (TwoPiL * pIn[mu]) * coor;
     }
-    qIn = qIn * exp(-Ci * pdotxin); // phase corrections
+    qIn_phased = qIn * exp(-Ci * pdotxin); // phase corrections
 
-    SpinColourMatrix qIn_mom = (1.0 / volume) * sum(qIn); // Divide by volume?
+    SpinColourMatrix qIn_mom = (1.0 / volume) * sum(qIn_phased); // Divide by volume?
     LOG(Message) << "summed over lattice" << std::endl;
 
     r.info.pIn  = par().pIn;
