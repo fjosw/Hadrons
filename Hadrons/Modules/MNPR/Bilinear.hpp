@@ -78,7 +78,7 @@ public:
     {
     public:
         GRID_SERIALIZABLE_CLASS_MEMBERS(Metadata,
-                                        Gamma::Algebra, gamma,
+                                        std::string,  description,
                                         std::string,  pIn,
                                         std::string,  pOut);
     };
@@ -174,15 +174,16 @@ void TBilinear<FImpl>::execute(void)
         pDotXIn  = pDotXIn  + (TwoPiL * pIn[mu])  * xMu;
         pDotXOut = pDotXOut + (TwoPiL * pOut[mu]) * xMu;
     }
-    qIn_phased  = qIn  * exp(-Ci*pDotXIn); //phase corrections
-    qOut_phased = qOut * exp(-Ci*pDotXOut);
+    qIn_phased  = qIn  * exp(-Ci * pDotXIn); //phase corrections
+    qOut_phased = qOut * exp(-Ci * pDotXOut);
     
-    r.info.pIn  = par().pIn;
-    r.info.pOut = par().pOut;
+    r.info.pIn  = par().pIn; // Redundant to write these into every group
+    r.info.pOut = par().pOut; // Redundant to write these into every group
     for (auto &G: Gamma::gall)
     {
-    	r.info.gamma = G.g;
-    	r.corr.push_back( (1.0 / volume) * sum(g5*adj(qOut_phased)*g5*G*qIn_phased) );
+    	r.info.description = Gamma::name[G.g]; // The change from Gamma::Algebra to string causes all strings to have the same length
+                                               // which leads to trailing spaces in the string. Is there an easy way to avoid this?
+    	r.corr.push_back( (1.0 / volume) * sum(g5 * adj(qOut_phased) * g5 * G * qIn_phased) );
         result.push_back(r);
     	//This is all still quite hacky - we probably want to think about the output format a little more!
     	r.corr.erase(r.corr.begin());
@@ -191,13 +192,15 @@ void TBilinear<FImpl>::execute(void)
     // Also write the propagators to the outfile
     r.info.pIn  = par().pIn;
     r.info.pOut = " ";
+    r.info.description = "qIn";
     r.corr.push_back( (1.0 / volume) * sum(qIn_phased) );
     result.push_back(r);
     r.corr.erase(r.corr.begin());
 
     r.info.pIn  = " ";
     r.info.pOut = par().pOut;
-    r.corr.push_back( (1.0 / volume) * sum(g5*adj(qOut_phased)*g5) );
+    r.info.description = "qOut";
+    r.corr.push_back( (1.0 / volume) * sum(g5 * adj(qOut_phased) * g5) );
     result.push_back(r);
     r.corr.erase(r.corr.begin());
 
