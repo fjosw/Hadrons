@@ -37,7 +37,7 @@ BEGIN_HADRONS_NAMESPACE
 
 /******************************************************************************
  *                                TBilinear                                       *
-        Performs bilinear contractions of the type tr[g5*adj(qOut)*g5*G*qIn]
+        Performs bilinear contractions of the type tr[g5*adj(qOut')*g5*G*qIn']
         Suitable for non exceptional momenta in Rome-Southampton NPR
 
 Compute the bilinear vertex needed for the NPR.
@@ -145,6 +145,7 @@ void TBilinear<FImpl>::execute(void)
     // Propagators
     auto  &qIn    = envGet(PropagatorField, par().qIn);
     auto  &qOut   = envGet(PropagatorField, par().qOut);
+    LatticeSpinColourMatrix qIn_phased(env().getGrid()), qOut_phased(env().getGrid());
     envGetTmp(ComplexField, pDotXIn);
     envGetTmp(ComplexField, pDotXOut);
     envGetTmp(ComplexField, xMu);
@@ -152,7 +153,7 @@ void TBilinear<FImpl>::execute(void)
     // momentum on legs
     //TODO: Do we want to check the momentum input format? Not done in MSink::Point, so probably ok like this.
     std::vector<Real>           pIn  = strToVec<Real>(par().pIn), 
-	                        pOut = strToVec<Real>(par().pOut);
+	                            pOut = strToVec<Real>(par().pOut);
     Coordinate                  latt_size = GridDefaultLatt(); 
     Gamma                       g5(Gamma::Algebra::Gamma5);
     Complex                     Ci(0.0,1.0);
@@ -173,32 +174,32 @@ void TBilinear<FImpl>::execute(void)
         pDotXIn  = pDotXIn  + (TwoPiL * pIn[mu])  * xMu;
         pDotXOut = pDotXOut + (TwoPiL * pOut[mu]) * xMu;
     }
-    qIn  = qIn  * exp(-Ci*pDotXIn); //phase corrections
-    qOut = qOut * exp(-Ci*pDotXOut);
+    qIn_phased  = qIn  * exp(-Ci*pDotXIn); //phase corrections
+    qOut_phased = qOut * exp(-Ci*pDotXOut);
     
     r.info.pIn  = par().pIn;
     r.info.pOut = par().pOut;
     for (auto &G: Gamma::gall)
     {
     	r.info.gamma = G.g;
-    	r.corr.push_back( (1.0 / volume) * sum(g5*adj(qOut)*g5*G*qIn) );
+    	r.corr.push_back( (1.0 / volume) * sum(g5*adj(qOut_phased)*g5*G*qIn_phased) );
         result.push_back(r);
     	//This is all still quite hacky - we probably want to think about the output format a little more!
     	r.corr.erase(r.corr.begin());
     }
 
     // Also write the propagators to the outfile
-    // r.info.pIn  = par().pIn;
-    // r.info.pOut = " ";
-    // r.corr.push_back( (1.0 / volume) * sum(qIn) );
-    // result.push_back(r);
-    // r.corr.erase(r.corr.begin());
+    r.info.pIn  = par().pIn;
+    r.info.pOut = " ";
+    r.corr.push_back( (1.0 / volume) * sum(qIn_phased) );
+    result.push_back(r);
+    r.corr.erase(r.corr.begin());
 
-    // r.info.pIn  = " ";
-    // r.info.pOut = par().pOut;
-    // r.corr.push_back( (1.0 / volume) * sum(g5*adj(qOut)*g5) );
-    // result.push_back(r);
-    // r.corr.erase(r.corr.begin());
+    r.info.pIn  = " ";
+    r.info.pOut = par().pOut;
+    r.corr.push_back( (1.0 / volume) * sum(g5*adj(qOut_phased)*g5) );
+    result.push_back(r);
+    r.corr.erase(r.corr.begin());
 
     //////////////////////////////////////////////////
     saveResult(par().output, "bilinear", result);

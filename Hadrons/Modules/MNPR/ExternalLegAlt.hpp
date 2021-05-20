@@ -111,7 +111,7 @@ void TExternalLegAlt<FImpl>::execute(void)
                  << " momentum '" << par().pIn << "'"
                  << std::endl;
     BinaryWriter                    writer(par().output);
-    PropagatorField                 &qIn = *env().template getObject<PropagatorField>(par().qIn);
+    auto                            &qIn    = envGet(PropagatorField, par().qIn);
     std::vector<int>                pIn  = strToVec<int>(par().pIn);
     Coordinate                      latt_size = GridDefaultLatt();  
     LatticeComplex                  pdotxin(env().getGrid()), coor(env().getGrid());
