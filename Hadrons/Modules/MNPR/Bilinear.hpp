@@ -78,7 +78,7 @@ public:
     {
     public:
         GRID_SERIALIZABLE_CLASS_MEMBERS(Metadata,
-                                        std::string,  description,
+                                        Gamma::Algebra, gamma,
                                         std::string,  pIn,
                                         std::string,  pOut);
     };
@@ -153,7 +153,7 @@ void TBilinear<FImpl>::execute(void)
     // momentum on legs
     //TODO: Do we want to check the momentum input format? Not done in MSink::Point, so probably ok like this.
     std::vector<Real>           pIn  = strToVec<Real>(par().pIn), 
-	                            pOut = strToVec<Real>(par().pOut);
+	                            pOut = strToVec<Real>(par().pOut); // Should this be Int instead of Real?
     Coordinate                  latt_size = GridDefaultLatt(); 
     Gamma                       g5(Gamma::Algebra::Gamma5);
     Complex                     Ci(0.0,1.0);
@@ -181,28 +181,12 @@ void TBilinear<FImpl>::execute(void)
     r.info.pOut = par().pOut; // Redundant to write these into every group
     for (auto &G: Gamma::gall)
     {
-    	r.info.description = Gamma::name[G.g]; // The change from Gamma::Algebra to string causes all strings to have the same length
-                                               // which leads to trailing spaces in the string. Is there an easy way to avoid this?
+    	r.info.gamma = G.g;
     	r.corr.push_back( (1.0 / volume) * sum(g5 * adj(qOut_phased) * g5 * G * qIn_phased) );
         result.push_back(r);
     	//This is all still quite hacky - we probably want to think about the output format a little more!
     	r.corr.erase(r.corr.begin());
     }
-
-    // Also write the propagators to the outfile
-    r.info.pIn  = par().pIn;
-    r.info.pOut = " ";
-    r.info.description = "qIn";
-    r.corr.push_back( (1.0 / volume) * sum(qIn_phased) );
-    result.push_back(r);
-    r.corr.erase(r.corr.begin());
-
-    r.info.pIn  = " ";
-    r.info.pOut = par().pOut;
-    r.info.description = "qOut";
-    r.corr.push_back( (1.0 / volume) * sum(g5 * adj(qOut_phased) * g5) );
-    result.push_back(r);
-    r.corr.erase(r.corr.begin());
 
     //////////////////////////////////////////////////
     saveResult(par().output, "bilinear", result);
