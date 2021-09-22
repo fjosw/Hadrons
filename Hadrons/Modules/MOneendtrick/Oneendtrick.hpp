@@ -44,7 +44,9 @@ class OneendtrickPar: Serializable
 public:
     GRID_SERIALIZABLE_CLASS_MEMBERS(OneendtrickPar,
                                     std::string, source,
-                                    std::string, solver);
+                                    std::string, solver,
+                                    unsigned int, t,
+                                    std::string, output);
 };
 
 template <typename FImpl>
@@ -98,9 +100,17 @@ std::vector<std::string> TOneendtrick<FImpl>::getInput(void)
 template <typename FImpl>
 std::vector<std::string> TOneendtrick<FImpl>::getOutput(void)
 {
-    std::vector<std::string> out = {getName(), getName() + "_5d"};
+    std::vector<std::string> output = {};
     
     return out;
+}
+
+template <typename FImpl1, typename FImpl2>
+std::vector<std::string> TMeson<FImpl1, FImpl2>::getOutputFiles(void)
+{
+    std::vector<std::string> output = {resultFilename(par().output)};
+    
+    return output;
 }
 
 // setup ///////////////////////////////////////////////////////////////////////
@@ -163,49 +173,49 @@ void TOneendtrick<FImpl>::solvePropagator(PropagatorField &prop,
     envGetTmp(FermionField, tmp);
     LOG(Message) << "Inverting using solver '" << par().solver << "'" 
                  << std::endl;
-    for (unsigned int s = 0; s < Ns; ++s)
-    for (unsigned int c = 0; c < FImpl::Dimension; ++c)
-    {
-        LOG(Message) << "Inversion for spin= " << s << ", color= " << c
-                     << std::endl;
+    //for (unsigned int s = 0; s < Ns; ++s)
+    //for (unsigned int c = 0; c < FImpl::Dimension; ++c)
+    //{
+        //LOG(Message) << "Inversion for spin= " << s << ", color= " << c
+         //            << std::endl;
         // source conversion for 4D sources
-        LOG(Message) << "Import source" << std::endl;
-        if (!env().isObject5d(par().source))
+    LOG(Message) << "Import source" << std::endl;
+    if (!env().isObject5d(par().source))
+    {
+        if (Ls_ == 1)
         {
-            if (Ls_ == 1)
-            {
-               PropToFerm<FImpl>(source, fullSrc, s, c);
-            }
-            else
-            {
-                PropToFerm<FImpl>(tmp, fullSrc, s, c);
-                mat.ImportPhysicalFermionSource(tmp, source);
-            }
+           //PropToFerm<FImpl>(source, fullSrc, s, c);
         }
-        // source conversion for 5D sources
         else
         {
-            if (Ls_ != env().getObjectLs(par().source))
-            {
-                HADRONS_ERROR(Size, "Ls mismatch between quark action and source");
-            }
-            else
-            {
-                PropToFerm<FImpl>(source, fullSrc, s, c);
-            }
-        }
-        sol = Zero();
-        LOG(Message) << "Solve" << std::endl;
-        solver(sol, source);
-        LOG(Message) << "Export solution" << std::endl;
-        FermToProp<FImpl>(prop, sol, s, c);
-        // create 4D propagators from 5D one if necessary
-        if (Ls_ > 1)
-        {
-            mat.ExportPhysicalFermionSolution(sol, tmp);
-            FermToProp<FImpl>(propPhysical, tmp, s, c);
+            //PropToFerm<FImpl>(tmp, fullSrc, s, c);
+            mat.ImportPhysicalFermionSource(tmp, source);
         }
     }
+    // source conversion for 5D sources
+    else
+    {
+        if (Ls_ != env().getObjectLs(par().source))
+        {
+            HADRONS_ERROR(Size, "Ls mismatch between quark action and source");
+        }
+        //else
+        //{
+        //    PropToFerm<FImpl>(source, fullSrc, s, c);
+        //}
+    }
+    sol = Zero();
+    LOG(Message) << "Solve" << std::endl;
+    solver(sol, source);
+    LOG(Message) << "Export solution" << std::endl;
+    //FermToProp<FImpl>(prop, sol, s, c);
+    // create 4D propagators from 5D one if necessary
+    if (Ls_ > 1)
+    {
+        mat.ExportPhysicalFermionSolution(sol, tmp);
+        //FermToProp<FImpl>(propPhysical, tmp, s, c);
+    }
+    //}
 }
 
 template <typename FImpl>
