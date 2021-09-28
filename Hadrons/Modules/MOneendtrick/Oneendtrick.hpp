@@ -43,7 +43,6 @@ class OneendtrickPar: Serializable
 {
 public:
     GRID_SERIALIZABLE_CLASS_MEMBERS(OneendtrickPar,
-                                    std::string, source,
                                     std::string, solver,
                                     unsigned int, t,
                                     std::string, output);
@@ -69,9 +68,11 @@ protected:
     // execution
     virtual void execute(void);
 private:
-    void solvePropagator(PropagatorField &result, PropagatorField &propPhysical,
-                         const PropagatorField &source);
+    void prepareZ2source(FermionField &src);
+    void solveFermion(FermionField &result, FermionField &propPhysical,
+                         const FermionField &source);
 private:
+    bool        hasT_{false};
     unsigned int Ls_;
     Solver       *solver_{nullptr};
 };
@@ -92,7 +93,7 @@ TOneendtrick<FImpl>::TOneendtrick(const std::string name)
 template <typename FImpl>
 std::vector<std::string> TOneendtrick<FImpl>::getInput(void)
 {
-    std::vector<std::string> in = {par().source, par().solver};
+    std::vector<std::string> in = {par().solver, par().output};
     
     return in;
 }
@@ -118,8 +119,10 @@ template <typename FImpl>
 void TOneendtrick<FImpl>::setup(void)
 {
     Ls_ = env().getObjectLs(par().solver);
+
+    envTmpLat(LatticeFermion, "eta"); // Fermion Field or lattice fermion?
     
-    envTmpLat(FermionField, "tmp");
+    envTmpLat(FermionField, "tmp"); 
     if (Ls_ > 1)
     {
         envTmpLat(FermionField, "source", Ls_);
@@ -130,38 +133,66 @@ void TOneendtrick<FImpl>::setup(void)
         envTmpLat(FermionField, "source");
         envTmpLat(FermionField, "sol");
     }
-    if (envHasType(PropagatorField, par().source))
-    {
-        envCreateLat(PropagatorField, getName());
-        if (Ls_ > 1)
-        {
-            envCreateLat(PropagatorField, getName() + "_5d", Ls_);
-        }
-    }
-    else if (envHasType(std::vector<PropagatorField>, par().source))
-    {
-        auto &src = envGet(std::vector<PropagatorField>, par().source);
-
-        envCreate(std::vector<PropagatorField>, getName(), 1, src.size(),
-                  envGetGrid(PropagatorField));
-        if (Ls_ > 1)
-        {
-            envCreate(std::vector<PropagatorField>, getName() + "_5d", Ls_,
-                      src.size(), envGetGrid(PropagatorField, Ls_));
-        }
-    }
-    else
-    {
-        HADRONS_ERROR_REF(ObjectType, "object '" + par().source 
-                          + "' has an incompatible type ("
-                          + env().getObjectType(par().source)
-                          + ")", env().getObjectAddress(par().source))
-    }
+    // if (envHasType(PropagatorField, par().source))
+    // {
+    //     envCreateLat(PropagatorField, getName());
+    //     if (Ls_ > 1)
+    //     {
+    //         envCreateLat(PropagatorField, getName() + "_5d", Ls_);
+    //     }
+    // }
+    // else
+    // {
+    //     HADRONS_ERROR_REF(ObjectType, "object '" + par().source 
+    //                       + "' has an incompatible type ("
+    //                       + env().getObjectType(par().source)
+    //                       + ")", env().getObjectAddress(par().source))
+    // }
 }
 
 // execution ///////////////////////////////////////////////////////////////////
 template <typename FImpl>
-void TOneendtrick<FImpl>::solvePropagator(PropagatorField &prop, 
+void TOneendtrick<FImpl>::prepareZ2source(FermionField &src)
+{
+    //auto    &src = envGet(FermionField, getName());
+    auto    &t_tmp   = envGet(Lattice<iScalar<vInteger>>, tName_);
+    Complex shift(1., 1.);
+
+    if (!hasT_)
+    {
+        LatticeCoordinate(t, Tp);
+        hasT_ = true;
+    }
+
+    envGetTmp(LatticeFermion, eta);
+    bernoulli(rng4d(), eta);
+    eta = (2.*eta - shift)*(1./::sqrt(2.));
+    eta = where((t_tmp >= par().t) and (t_tmp <= par().t), eta, 0.*eta);
+    src = 1.;
+    src = src*eta;
+}
+
+template <typename FImpl>
+void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
+{
+    auto    &t_tmp   = envGet(Lattice<iScalar<vInteger>>, tName_);
+    Complex                         Ci(0.0,1.0);
+    if (!hasT_)
+    {
+        LatticeCoordinate(t, Tp);
+        hasT_ = true;
+    }
+
+    envGetTmp(LatticeFermion, eta);
+    random(rng4d(), eta); // Uniform complex random number
+    eta = exp(Ci*2*M_PI*real(eta));
+    eta = where((t_tmp >= par().t) and (t_tmp <= par().t), eta, 0.*eta);
+    src = 1.;
+    src = src*eta;
+}
+
+template <typename FImpl>
+void TOneendtrick<FImpl>::solveFermion(PropagatorField &prop, 
                                         PropagatorField &propPhysical,
                                         const PropagatorField &fullSrc)
 {
@@ -173,12 +204,6 @@ void TOneendtrick<FImpl>::solvePropagator(PropagatorField &prop,
     envGetTmp(FermionField, tmp);
     LOG(Message) << "Inverting using solver '" << par().solver << "'" 
                  << std::endl;
-    //for (unsigned int s = 0; s < Ns; ++s)
-    //for (unsigned int c = 0; c < FImpl::Dimension; ++c)
-    //{
-        //LOG(Message) << "Inversion for spin= " << s << ", color= " << c
-         //            << std::endl;
-        // source conversion for 4D sources
     LOG(Message) << "Import source" << std::endl;
     if (!env().isObject5d(par().source))
     {
@@ -226,28 +251,13 @@ void TOneendtrick<FImpl>::execute(void)
     
     std::string propName = (Ls_ == 1) ? getName() : (getName() + "_5d");
 
-    if (envHasType(PropagatorField, par().source))
-    {
-        auto &prop         = envGet(PropagatorField, propName);
-        auto &propPhysical = envGet(PropagatorField, getName());
-        auto &fullSrc      = envGet(PropagatorField, par().source);
+    auto &prop         = envGet(PropagatorField, propName);
+    auto &propPhysical = envGet(PropagatorField, getName());
+    auto &fullSrc      = envGet(PropagatorField, par().source);
 
-        LOG(Message) << "Using source '" << par().source << "'" << std::endl;
-        solvePropagator(prop, propPhysical, fullSrc);
-    }
-    else
-    {
-        auto &prop         = envGet(std::vector<PropagatorField>, propName);
-        auto &propPhysical = envGet(std::vector<PropagatorField>, getName());
-        auto &fullSrc      = envGet(std::vector<PropagatorField>, par().source);
-
-        for (unsigned int i = 0; i < fullSrc.size(); ++i)
-        {
-            LOG(Message) << "Using element " << i << " of source vector '" 
-                         << par().source << "'" << std::endl;
-            solvePropagator(prop[i], propPhysical[i], fullSrc[i]);
-        }
-    }
+    LOG(Message) << "Using source '" << par().source << "'" << std::endl;
+    solveFermion(prop, propPhysical, fullSrc);
+    
 }
 
 END_MODULE_NAMESPACE
