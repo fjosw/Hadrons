@@ -62,7 +62,6 @@ public:
                                         Gamma::Algebra, gamma_src,
                                         std::vector<Complex>, corr);
     };
-    typedef Correlator<Metadata, SpinColourMatrix> Result;
 public:
     // constructor
     TOneendtrick(const std::string name);
@@ -80,15 +79,16 @@ protected:
 private:
     // void prepareZ2source(FermionField &src);
     void prepareU1source(FermionField &src);
-    void solveFermion(FermionField &result, FermionField &propPhysical,
-                         const FermionField &source);
+    void solveFermion(FermionField &solution,
+                    const FermionField &source);
 private:
     bool        hasT_{false};
+    std::string tName_;
     unsigned int Ls_;
     Solver       *solver_{nullptr};
 };
 
-MODULE_REGISTER_TMP(Oneendtrick, TOneendtrick<FIMPL>, MFermion);
+MODULE_REGISTER_TMP(Oneendtrick, TOneendtrick<FIMPL>, MOneendtrick);
 // MODULE_REGISTER_TMP(ZOneendtrick, TOneendtrick<ZFIMPL>, MFermion);
 
 /******************************************************************************
@@ -114,11 +114,11 @@ std::vector<std::string> TOneendtrick<FImpl>::getOutput(void)
 {
     std::vector<std::string> output = {};
     
-    return out;
+    return output;
 }
 
-template <typename FImpl1, typename FImpl2>
-std::vector<std::string> TMeson<FImpl1, FImpl2>::getOutputFiles(void)
+template <typename FImpl>
+std::vector<std::string> TOneendtrick<FImpl>::getOutputFiles(void)
 {
     std::vector<std::string> output = {resultFilename(par().output)};
     
@@ -136,6 +136,7 @@ void TOneendtrick<FImpl>::setup(void)
 
     envTmpLat(LatticeComplex, "c");
 
+    envCache(Lattice<iScalar<vInteger>>, tName_, 1, envGetGrid(LatticeComplex));
     envTmpLat(FermionField, "rng_field"); // Fermion Field or lattice fermion?
 
     if (Ls_ > 1)
@@ -180,16 +181,16 @@ void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
 
     if (!hasT_)
     {
-        LatticeCoordinate(t, Tp);
+        LatticeCoordinate(t_tmp, Tp);
         hasT_ = true;
     }
 
     envGetTmp(FermionField, rng_field);
     random(rng4d(), rng_field); // Uniform complex random number
-    rng_field = exp(Ci*2*M_PI*real(rng_field));
+    rng_field = exp(Ci*2.0*M_PI*real(rng_field));
     rng_field = where((t_tmp >= par().t) and (t_tmp <= par().t), rng_field, 0.*rng_field);
     src = 1.;
-    src = src*rng_field;
+    //src = src*rng_field;
 }
 
 template <typename FImpl>
@@ -238,21 +239,26 @@ void TOneendtrick<FImpl>::solveFermion(FermionField &solution,
 template <typename FImpl>
 void TOneendtrick<FImpl>::execute(void)
 {
-    int                    nt = env().getDim(Tp);
-    std::vector<TComplex>  buf;
-    std::vector<Gamma>     gammaList;
-    std::vector<Result>    result;
+    int                             nt = env().getDim(Tp);
+    std::vector<TComplex>           buf;
+    Gamma                           g5(Gamma::Algebra::Gamma5);
+    std::vector<Gamma::Algebra>     gammaList;
+    std::vector<Result>             result;
 
-    for (unsigned int i = 1; i < Gamma::nGamma; i += 2)
+    // for (unsigned int i = 1; i < Gamma::nGamma; i += 2)
+    // {
+    //     gammaList.push_back((Gamma::Algebra)i);
+    // }
+    for (auto &G: Gamma::gall)
     {
-        gammaList.push_back((Gamma::Algebra)i);
+        gammaList.push_back(G.g);
     }
 
     result.resize(gammaList.size());
     for (unsigned int i = 0; i < result.size(); ++i)
     {
         result[i].gamma_snk = gammaList[i];
-        result[i].gamma_src = g5.G;
+        result[i].gamma_src = gammaList[0]; // Gamma5
         result[i].corr.resize(nt);
     }
 
@@ -267,39 +273,19 @@ void TOneendtrick<FImpl>::execute(void)
     solveFermion(chi, eta);
 
     envGetTmp(LatticeComplex, c);
-    for (unsigned int i = 0; i < result.size(); ++i)
-    {
-        Gamma       gSnk(gammaList[i]);
-
-        c = trace(mesonConnected(q1, q2, gSnk, g5));
-        sliceSum(c, buf, Tp);
-
-        for (unsigned int t = 0; t < buf.size(); ++t)
-        {
-            result[i].corr[t] = TensorRemove(buf[t]);
-        }
-    }
-
-    // for (auto &G: Gamma::gall)
+    // for (unsigned int i = 0; i < result.size(); ++i)
     // {
+    //     Gamma       gSnk(gammaList[i]);
 
-    //     {
-    //         SinkFnScalar &sink = envGet(SinkFnScalar, par().sink);
-            
-    //         c   = trace(mesonConnected(q1, q2, gSnk, gSrc));
-    //         buf = sink(c);
-    //     }
+    //     c = trace(mesonConnected(chi, chi, gSnk, g5)); // Does trace work on a Fermion Field?
+    //     sliceSum(c, buf, Tp);
+
     //     for (unsigned int t = 0; t < buf.size(); ++t)
     //     {
     //         result[i].corr[t] = TensorRemove(buf[t]);
     //     }
-
-    //     r.corr.push_back( trace(mesonConnected(chi, chi, G, g5)); );
-    //     result.push_back(r);
-    //     r.corr.erase(r.corr.begin());
     // }
 
-    //////////////////////////////////////////////////
     saveResult(par().output, "Oneendtrick", result);
     LOG(Message) << "Complete. Writing results to " << par().output << std::endl;
 

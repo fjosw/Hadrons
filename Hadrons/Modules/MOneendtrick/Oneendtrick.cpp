@@ -29,5 +29,5 @@ using namespace Grid;
 using namespace Hadrons;
 using namespace MOneendtrick;
 
-//template class Grid::Hadrons::MFermion::TGaugeProp<FIMPL>;
+template class Grid::Hadrons::MOneendtrick::TOneendtrick<FIMPL>;
 //template class Grid::Hadrons::MFermion::TGaugeProp<ZFIMPL>;
