@@ -104,7 +104,7 @@ TOneendtrick<FImpl>::TOneendtrick(const std::string name)
 template <typename FImpl>
 std::vector<std::string> TOneendtrick<FImpl>::getInput(void)
 {
-    std::vector<std::string> in = {par().solver, par().output};
+    std::vector<std::string> in = {par().solver};
     
     return in;
 }
@@ -133,6 +133,7 @@ void TOneendtrick<FImpl>::setup(void)
 
     envTmpLat(FermionField, "eta");
     envTmpLat(FermionField, "chi");
+    envTmpLat(FermionField, "psi");
 
     envTmpLat(LatticeComplex, "c");
 
@@ -142,12 +143,12 @@ void TOneendtrick<FImpl>::setup(void)
     if (Ls_ > 1)
     {
         envTmpLat(FermionField, "tmp_source", Ls_);
-        envTmpLat(FermionField, "tmp_sol", Ls_);
+        envTmpLat(FermionField, "tmp_solution", Ls_);
     }
     else
     {
         envTmpLat(FermionField, "tmp_source");
-        envTmpLat(FermionField, "tmp_sol");
+        envTmpLat(FermionField, "tmp_solution");
     }
 }
 
@@ -189,8 +190,7 @@ void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
     random(rng4d(), rng_field); // Uniform complex random number
     rng_field = exp(Ci*2.0*M_PI*real(rng_field));
     rng_field = where((t_tmp >= par().t) and (t_tmp <= par().t), rng_field, 0.*rng_field);
-    src = 1.;
-    //src = src*rng_field;
+    src = rng_field;
 }
 
 template <typename FImpl>
@@ -243,13 +243,14 @@ void TOneendtrick<FImpl>::execute(void)
     std::vector<TComplex>           buf;
     Gamma                           g5(Gamma::Algebra::Gamma5);
     std::vector<Gamma::Algebra>     gammaList;
+    std::vector<ComplexD>            res_vector;
     std::vector<Result>             result;
 
-    // for (unsigned int i = 1; i < Gamma::nGamma; i += 2)
-    // {
-    //     gammaList.push_back((Gamma::Algebra)i);
-    // }
-    for (auto &G: Gamma::gall)
+    const std::array<const Gamma, 2> grelevant = {{
+      Gamma(Gamma::Algebra::Gamma5),      
+      Gamma(Gamma::Algebra::GammaTGamma5)}};
+
+    for (auto &G: grelevant)
     {
         gammaList.push_back(G.g);
     }
@@ -267,24 +268,26 @@ void TOneendtrick<FImpl>::execute(void)
     
     envGetTmp(FermionField, eta);
     envGetTmp(FermionField, chi);
+    envGetTmp(FermionField, psi);
 
     prepareU1source(eta);    
 
     solveFermion(chi, eta);
 
     envGetTmp(LatticeComplex, c);
-    // for (unsigned int i = 0; i < result.size(); ++i)
-    // {
-    //     Gamma       gSnk(gammaList[i]);
+    for (unsigned int i = 0; i < result.size(); ++i)
+    {
+        Gamma       gSnk(gammaList[i]);
 
-    //     c = trace(mesonConnected(chi, chi, gSnk, g5)); // Does trace work on a Fermion Field?
-    //     sliceSum(c, buf, Tp);
+        psi = gSnk*g5*chi;
 
-    //     for (unsigned int t = 0; t < buf.size(); ++t)
-    //     {
-    //         result[i].corr[t] = TensorRemove(buf[t]);
-    //     }
-    // }
+        sliceInnerProductVector(res_vector, psi, chi, Tp); // gSnk*g5*chi
+
+        for (unsigned int t = 0; t < nt; ++t)
+        {
+            result[i].corr[t] = res_vector[t];
+        }
+    }
 
     saveResult(par().output, "Oneendtrick", result);
     LOG(Message) << "Complete. Writing results to " << par().output << std::endl;
