@@ -54,6 +54,15 @@ class TOneendtrick: public Module<OneendtrickPar>
 public:
     FERM_TYPE_ALIASES(FImpl,);
     SOLVER_TYPE_ALIASES(FImpl,);
+    class Result: Serializable
+    {
+    public:
+        GRID_SERIALIZABLE_CLASS_MEMBERS(Result,
+                                        Gamma::Algebra, gamma_snk,
+                                        Gamma::Algebra, gamma_src,
+                                        std::vector<Complex>, corr);
+    };
+    typedef Correlator<Metadata, SpinColourMatrix> Result;
 public:
     // constructor
     TOneendtrick(const std::string name);
@@ -62,13 +71,15 @@ public:
     // dependency relation
     virtual std::vector<std::string> getInput(void);
     virtual std::vector<std::string> getOutput(void);
+    virtual std::vector<std::string> getOutputFiles(void);
 protected:
     // setup
     virtual void setup(void);
     // execution
     virtual void execute(void);
 private:
-    void prepareZ2source(FermionField &src);
+    // void prepareZ2source(FermionField &src);
+    void prepareU1source(FermionField &src);
     void solveFermion(FermionField &result, FermionField &propPhysical,
                          const FermionField &source);
 private:
@@ -78,7 +89,7 @@ private:
 };
 
 MODULE_REGISTER_TMP(Oneendtrick, TOneendtrick<FIMPL>, MFermion);
-MODULE_REGISTER_TMP(ZOneendtrick, TOneendtrick<ZFIMPL>, MFermion);
+// MODULE_REGISTER_TMP(ZOneendtrick, TOneendtrick<ZFIMPL>, MFermion);
 
 /******************************************************************************
  *                      TOneendtrick implementation                             *
@@ -120,144 +131,178 @@ void TOneendtrick<FImpl>::setup(void)
 {
     Ls_ = env().getObjectLs(par().solver);
 
-    envTmpLat(LatticeFermion, "eta"); // Fermion Field or lattice fermion?
-    
-    envTmpLat(FermionField, "tmp"); 
+    envTmpLat(FermionField, "eta");
+    envTmpLat(FermionField, "chi");
+
+    envTmpLat(LatticeComplex, "c");
+
+    envTmpLat(FermionField, "rng_field"); // Fermion Field or lattice fermion?
+
     if (Ls_ > 1)
     {
-        envTmpLat(FermionField, "source", Ls_);
-        envTmpLat(FermionField, "sol", Ls_);
+        envTmpLat(FermionField, "tmp_source", Ls_);
+        envTmpLat(FermionField, "tmp_sol", Ls_);
     }
     else
     {
-        envTmpLat(FermionField, "source");
-        envTmpLat(FermionField, "sol");
+        envTmpLat(FermionField, "tmp_source");
+        envTmpLat(FermionField, "tmp_sol");
     }
-    // if (envHasType(PropagatorField, par().source))
-    // {
-    //     envCreateLat(PropagatorField, getName());
-    //     if (Ls_ > 1)
-    //     {
-    //         envCreateLat(PropagatorField, getName() + "_5d", Ls_);
-    //     }
-    // }
-    // else
-    // {
-    //     HADRONS_ERROR_REF(ObjectType, "object '" + par().source 
-    //                       + "' has an incompatible type ("
-    //                       + env().getObjectType(par().source)
-    //                       + ")", env().getObjectAddress(par().source))
-    // }
 }
 
 // execution ///////////////////////////////////////////////////////////////////
-template <typename FImpl>
-void TOneendtrick<FImpl>::prepareZ2source(FermionField &src)
-{
-    //auto    &src = envGet(FermionField, getName());
-    auto    &t_tmp   = envGet(Lattice<iScalar<vInteger>>, tName_);
-    Complex shift(1., 1.);
+// template <typename FImpl>
+// void TOneendtrick<FImpl>::prepareZ2source(FermionField &src)
+// {
+//     //auto    &src = envGet(FermionField, getName());
+//     auto    &t_tmp   = envGet(Lattice<iScalar<vInteger>>, tName_);
+//     Complex shift(1., 1.);
 
-    if (!hasT_)
-    {
-        LatticeCoordinate(t, Tp);
-        hasT_ = true;
-    }
+//     if (!hasT_)
+//     {
+//         LatticeCoordinate(t, Tp);
+//         hasT_ = true;
+//     }
 
-    envGetTmp(LatticeFermion, eta);
-    bernoulli(rng4d(), eta);
-    eta = (2.*eta - shift)*(1./::sqrt(2.));
-    eta = where((t_tmp >= par().t) and (t_tmp <= par().t), eta, 0.*eta);
-    src = 1.;
-    src = src*eta;
-}
+//     envGetTmp(LatticeFermion, eta);
+//     bernoulli(rng4d(), eta);
+//     eta = (2.*eta - shift)*(1./::sqrt(2.));
+//     eta = where((t_tmp >= par().t) and (t_tmp <= par().t), eta, 0.*eta);
+//     src = 1.;
+//     src = src*eta;
+// }
 
 template <typename FImpl>
 void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
 {
     auto    &t_tmp   = envGet(Lattice<iScalar<vInteger>>, tName_);
     Complex                         Ci(0.0,1.0);
+
     if (!hasT_)
     {
         LatticeCoordinate(t, Tp);
         hasT_ = true;
     }
 
-    envGetTmp(LatticeFermion, eta);
-    random(rng4d(), eta); // Uniform complex random number
-    eta = exp(Ci*2*M_PI*real(eta));
-    eta = where((t_tmp >= par().t) and (t_tmp <= par().t), eta, 0.*eta);
+    envGetTmp(FermionField, rng_field);
+    random(rng4d(), rng_field); // Uniform complex random number
+    rng_field = exp(Ci*2*M_PI*real(rng_field));
+    rng_field = where((t_tmp >= par().t) and (t_tmp <= par().t), rng_field, 0.*rng_field);
     src = 1.;
-    src = src*eta;
+    src = src*rng_field;
 }
 
 template <typename FImpl>
-void TOneendtrick<FImpl>::solveFermion(PropagatorField &prop, 
-                                        PropagatorField &propPhysical,
-                                        const PropagatorField &fullSrc)
+void TOneendtrick<FImpl>::solveFermion(FermionField &solution,
+                                        const FermionField &source)
 {
     auto &solver  = envGet(Solver, par().solver);
     auto &mat     = solver.getFMat();
-    
-    envGetTmp(FermionField, source);
-    envGetTmp(FermionField, sol);
-    envGetTmp(FermionField, tmp);
+
+    envGetTmp(FermionField, tmp_source);
+    envGetTmp(FermionField, tmp_solution);
+
+
     LOG(Message) << "Inverting using solver '" << par().solver << "'" 
                  << std::endl;
-    LOG(Message) << "Import source" << std::endl;
-    if (!env().isObject5d(par().source))
-    {
-        if (Ls_ == 1)
-        {
-           //PropToFerm<FImpl>(source, fullSrc, s, c);
-        }
-        else
-        {
-            //PropToFerm<FImpl>(tmp, fullSrc, s, c);
-            mat.ImportPhysicalFermionSource(tmp, source);
-        }
-    }
-    // source conversion for 5D sources
-    else
-    {
-        if (Ls_ != env().getObjectLs(par().source))
-        {
-            HADRONS_ERROR(Size, "Ls mismatch between quark action and source");
-        }
-        //else
-        //{
-        //    PropToFerm<FImpl>(source, fullSrc, s, c);
-        //}
-    }
-    sol = Zero();
-    LOG(Message) << "Solve" << std::endl;
-    solver(sol, source);
-    LOG(Message) << "Export solution" << std::endl;
-    //FermToProp<FImpl>(prop, sol, s, c);
-    // create 4D propagators from 5D one if necessary
+    // LOG(Message) << "Import source" << std::endl;
+
     if (Ls_ > 1)
     {
-        mat.ExportPhysicalFermionSolution(sol, tmp);
-        //FermToProp<FImpl>(propPhysical, tmp, s, c);
+        mat.ImportPhysicalFermionSource(source, tmp_source);
     }
-    //}
+    else
+    {
+        tmp_source = source;
+    }
+
+    tmp_solution = Zero();
+    LOG(Message) << "Solve" << std::endl;
+    solver(tmp_solution, tmp_source);
+    LOG(Message) << "Export solution" << std::endl;
+
+    // create 4D FermionField from 5D one if necessary
+    if (Ls_ > 1)
+    {
+        mat.ExportPhysicalFermionSolution(tmp_solution, solution);
+    }
+    else
+    {
+        solution = tmp_solution;
+    }
 }
+
+#define mesonConnected(q1, q2, gSnk, gSrc) \
+(g5*(gSnk))*(q1)*(adj(gSrc)*g5)*adj(q2)
 
 template <typename FImpl>
 void TOneendtrick<FImpl>::execute(void)
 {
-    LOG(Message) << "Computing quark propagator '" << getName() << "'"
+    int                    nt = env().getDim(Tp);
+    std::vector<TComplex>  buf;
+    std::vector<Gamma>     gammaList;
+    std::vector<Result>    result;
+
+    for (unsigned int i = 1; i < Gamma::nGamma; i += 2)
+    {
+        gammaList.push_back((Gamma::Algebra)i);
+    }
+
+    result.resize(gammaList.size());
+    for (unsigned int i = 0; i < result.size(); ++i)
+    {
+        result[i].gamma_snk = gammaList[i];
+        result[i].gamma_src = g5.G;
+        result[i].corr.resize(nt);
+    }
+
+    LOG(Message) << "Computing one end trick '" << getName() << "'"
                  << std::endl;
     
-    std::string propName = (Ls_ == 1) ? getName() : (getName() + "_5d");
+    envGetTmp(FermionField, eta);
+    envGetTmp(FermionField, chi);
 
-    auto &prop         = envGet(PropagatorField, propName);
-    auto &propPhysical = envGet(PropagatorField, getName());
-    auto &fullSrc      = envGet(PropagatorField, par().source);
+    prepareU1source(eta);    
 
-    LOG(Message) << "Using source '" << par().source << "'" << std::endl;
-    solveFermion(prop, propPhysical, fullSrc);
-    
+    solveFermion(chi, eta);
+
+    envGetTmp(LatticeComplex, c);
+    for (unsigned int i = 0; i < result.size(); ++i)
+    {
+        Gamma       gSnk(gammaList[i]);
+
+        c = trace(mesonConnected(q1, q2, gSnk, g5));
+        sliceSum(c, buf, Tp);
+
+        for (unsigned int t = 0; t < buf.size(); ++t)
+        {
+            result[i].corr[t] = TensorRemove(buf[t]);
+        }
+    }
+
+    // for (auto &G: Gamma::gall)
+    // {
+
+    //     {
+    //         SinkFnScalar &sink = envGet(SinkFnScalar, par().sink);
+            
+    //         c   = trace(mesonConnected(q1, q2, gSnk, gSrc));
+    //         buf = sink(c);
+    //     }
+    //     for (unsigned int t = 0; t < buf.size(); ++t)
+    //     {
+    //         result[i].corr[t] = TensorRemove(buf[t]);
+    //     }
+
+    //     r.corr.push_back( trace(mesonConnected(chi, chi, G, g5)); );
+    //     result.push_back(r);
+    //     r.corr.erase(r.corr.begin());
+    // }
+
+    //////////////////////////////////////////////////
+    saveResult(par().output, "Oneendtrick", result);
+    LOG(Message) << "Complete. Writing results to " << par().output << std::endl;
+
 }
 
 END_MODULE_NAMESPACE
