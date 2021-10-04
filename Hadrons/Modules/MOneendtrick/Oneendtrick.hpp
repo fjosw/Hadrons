@@ -89,7 +89,6 @@ private:
 };
 
 MODULE_REGISTER_TMP(Oneendtrick, TOneendtrick<FIMPL>, MOneendtrick);
-// MODULE_REGISTER_TMP(ZOneendtrick, TOneendtrick<ZFIMPL>, MFermion);
 
 /******************************************************************************
  *                      TOneendtrick implementation                             *
@@ -295,4 +294,4 @@ END_MODULE_NAMESPACE
 
 END_HADRONS_NAMESPACE
 
-#endif // Hadrons_MFermion_Oneendtrick_hpp_
+#endif // Hadrons_MOneendtrick_Oneendtrick_hpp_
