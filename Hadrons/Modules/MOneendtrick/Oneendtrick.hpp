@@ -233,9 +233,6 @@ void TOneendtrick<FImpl>::solveFermion(FermionField &solution,
     }
 }
 
-#define mesonConnected(q1, q2, gSnk, gSrc) \
-(g5*(gSnk))*(q1)*(adj(gSrc)*g5)*adj(q2)
-
 template <typename FImpl>
 void TOneendtrick<FImpl>::execute(void)
 {
@@ -281,7 +278,7 @@ void TOneendtrick<FImpl>::execute(void)
 
         psi = gSnk*g5*chi;
 
-        sliceInnerProductVector(res_vector, psi, chi, Tp); // gSnk*g5*chi
+        sliceInnerProductVector(res_vector, psi, chi, Tp);
 
         for (unsigned int t = 0; t < nt; ++t)
         {
