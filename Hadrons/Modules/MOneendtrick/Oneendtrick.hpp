@@ -34,6 +34,22 @@
 
 BEGIN_HADRONS_NAMESPACE
 
+/*
+
+ Use the one-end trick to compute pseudosclar meson masses
+ -----------------------------
+
+ * options:
+ - solver: The solver with which the stochastic source should be inverted.
+ - t: temporal position of the stochastic source
+ - output: filestem the output should be saved in
+
+ * possible extensions:
+ - Allow for several hits per timeslice
+ - Allow for non-degenerate quarks (requires second FImpl)
+ - Allow for spin dilution with which one could access all possible source gamma structures
+*/
+
 /******************************************************************************
  *                                Oneendtrick                                   *
  ******************************************************************************/
@@ -184,6 +200,8 @@ void TOneendtrick<FImpl>::solveFermion(FermionField &solution,
 
     LOG(Message) << "Inverting using solver '" << par().solver << "'" 
                  << std::endl;
+
+    // create 5D FermionField from 4D one if necessary
     if (Ls_ > 1)
     {
         mat.ImportPhysicalFermionSource(source, tmp_source);
