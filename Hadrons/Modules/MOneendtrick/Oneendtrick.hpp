@@ -97,6 +97,7 @@ MODULE_REGISTER_TMP(Oneendtrick, TOneendtrick<FIMPL>, MOneendtrick);
 template <typename FImpl>
 TOneendtrick<FImpl>::TOneendtrick(const std::string name)
 : Module<OneendtrickPar>(name)
+, tName_ (name + "_t")
 {}
 
 // dependencies/products ///////////////////////////////////////////////////////
@@ -268,7 +269,6 @@ void TOneendtrick<FImpl>::execute(void)
 
     solveFermion(chi, eta);
 
-    envGetTmp(LatticeComplex, c);
     for (unsigned int i = 0; i < result.size(); ++i)
     {
         Gamma       gSnk(gammaList[i]);
