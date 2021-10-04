@@ -77,7 +77,6 @@ protected:
     // execution
     virtual void execute(void);
 private:
-    // void prepareZ2source(FermionField &src);
     void prepareU1source(FermionField &src);
     void solveFermion(FermionField &solution,
                     const FermionField &source);
@@ -151,27 +150,6 @@ void TOneendtrick<FImpl>::setup(void)
 }
 
 // execution ///////////////////////////////////////////////////////////////////
-// template <typename FImpl>
-// void TOneendtrick<FImpl>::prepareZ2source(FermionField &src)
-// {
-//     //auto    &src = envGet(FermionField, getName());
-//     auto    &t_tmp   = envGet(Lattice<iScalar<vInteger>>, tName_);
-//     Complex shift(1., 1.);
-
-//     if (!hasT_)
-//     {
-//         LatticeCoordinate(t, Tp);
-//         hasT_ = true;
-//     }
-
-//     envGetTmp(LatticeFermion, eta);
-//     bernoulli(rng4d(), eta);
-//     eta = (2.*eta - shift)*(1./::sqrt(2.));
-//     eta = where((t_tmp >= par().t) and (t_tmp <= par().t), eta, 0.*eta);
-//     src = 1.;
-//     src = src*eta;
-// }
-
 template <typename FImpl>
 void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
 {
@@ -185,6 +163,8 @@ void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
     }
 
     envGetTmp(FermionField, rng_field);
+
+    LOG(Message) << "Preparing U1 source" << std::endl;
     random(rng4d(), rng_field); // Uniform complex random number
     rng_field = exp(Ci*2.0*M_PI*real(rng_field));
     rng_field = where((t_tmp >= par().t) and (t_tmp <= par().t), rng_field, 0.*rng_field);
@@ -204,8 +184,6 @@ void TOneendtrick<FImpl>::solveFermion(FermionField &solution,
 
     LOG(Message) << "Inverting using solver '" << par().solver << "'" 
                  << std::endl;
-    // LOG(Message) << "Import source" << std::endl;
-
     if (Ls_ > 1)
     {
         mat.ImportPhysicalFermionSource(source, tmp_source);
@@ -216,9 +194,7 @@ void TOneendtrick<FImpl>::solveFermion(FermionField &solution,
     }
 
     tmp_solution = Zero();
-    LOG(Message) << "Solve" << std::endl;
     solver(tmp_solution, tmp_source);
-    LOG(Message) << "Export solution" << std::endl;
 
     // create 4D FermionField from 5D one if necessary
     if (Ls_ > 1)
@@ -235,10 +211,9 @@ template <typename FImpl>
 void TOneendtrick<FImpl>::execute(void)
 {
     int                             nt = env().getDim(Tp);
-    std::vector<TComplex>           buf;
     Gamma                           g5(Gamma::Algebra::Gamma5);
     std::vector<Gamma::Algebra>     gammaList;
-    std::vector<ComplexD>            res_vector;
+    std::vector<ComplexD>           res_vector;
     std::vector<Result>             result;
 
     const std::array<const Gamma, 2> grelevant = {{
@@ -268,6 +243,8 @@ void TOneendtrick<FImpl>::execute(void)
     prepareU1source(eta);    
 
     solveFermion(chi, eta);
+
+    LOG(Message) << "Computing contractions" << std::endl;
 
     for (unsigned int i = 0; i < result.size(); ++i)
     {
