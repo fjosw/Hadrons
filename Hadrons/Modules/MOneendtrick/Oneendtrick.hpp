@@ -134,10 +134,8 @@ void TOneendtrick<FImpl>::setup(void)
     envTmpLat(FermionField, "chi");
     envTmpLat(FermionField, "psi");
 
-    envTmpLat(LatticeComplex, "c");
-
     envCache(Lattice<iScalar<vInteger>>, tName_, 1, envGetGrid(LatticeComplex));
-    envTmpLat(FermionField, "rng_field"); // Fermion Field or lattice fermion?
+    envTmpLat(FermionField, "rng_field");
 
     if (Ls_ > 1)
     {
