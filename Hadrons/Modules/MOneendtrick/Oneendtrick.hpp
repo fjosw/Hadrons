@@ -39,6 +39,9 @@ BEGIN_HADRONS_NAMESPACE
  Use the one-end trick to compute pseudosclar meson masses
  -----------------------------
 
+ The correlator is not volume normalised. To compare to dat from a point source
+ one needs to divide by L^3.
+
  * options:
  - solver: The solver with which the stochastic source should be inverted.
  - t: temporal position of the stochastic source
@@ -185,6 +188,7 @@ void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
     rng_field = exp(Ci*2.0*M_PI*real(rng_field));
     rng_field = where((t_tmp >= par().t) and (t_tmp <= par().t), rng_field, 0.*rng_field);
     src = rng_field;
+    LOG(Message) << "Prepared source with norm " << norm2(src) << std::endl;
 }
 
 template <typename FImpl>
@@ -251,7 +255,7 @@ void TOneendtrick<FImpl>::execute(void)
         result[i].corr.resize(nt);
     }
 
-    LOG(Message) << "Computing one end trick '" << getName() << "'"
+    LOG(Message) << "Computing meson two-point functions '" << getName() << "' via the one-end trick"
                  << std::endl;
     
     envGetTmp(FermionField, eta);
@@ -268,7 +272,7 @@ void TOneendtrick<FImpl>::execute(void)
     {
         Gamma       gSnk(gammaList[i]);
 
-        psi = gSnk*g5*chi;
+        psi = adj(gSnk)*g5*chi;
 
         sliceInnerProductVector(res_vector, psi, chi, Tp);
 
