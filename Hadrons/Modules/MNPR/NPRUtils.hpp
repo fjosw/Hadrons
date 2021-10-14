@@ -100,22 +100,22 @@ void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, SpinColourSp
     {
         for(int sj=0; sj < Ns; ++sj)
         {
-            auto pa = peekSpin(prop, si, sj);
+            auto pa = PeekIndex<1>(prop, si, sj);
             for (int ci=0; ci < Nc; ++ci)
             {
                 for (int cj=0; cj < Nc; ++cj)
                 {
-                    auto pb = peekColour(pa, ci, cj);
+                    auto pb = PeekIndex<2>(pa, ci, cj);
                     for(int sk=0; sk < Ns; ++sk)
                     {
                         for(int sl=0; sl < Ns; ++sl)
                         {
-                            auto pc = PeekIndex<4>(pb, sk, sl);
+                            auto pc = PeekIndex<3>(pb, sk, sl);
                             for (int ck=0; ck < Nc; ++ck)
                             {
                                 for (int cl=0; cl < Nc; ++cl)
                                 {
-                                    const ComplexD val = sum(PeekIndex<3>(pc, ck, cl));
+                                    const ComplexD val = sum(PeekIndex<4>(pc, ck, cl));
                                     res()(si,sj)(ci,cj)(sk,sl)(ck,cl) = val;
                                 }
                             }
@@ -138,17 +138,19 @@ void NPRUtils<FImpl>::tensorProd(SpinColourSpinColourMatrixField &lret, Propagat
     accelerator_for( site, lret_v.size(), a.Grid()->Nsimd(), {
         vTComplex left;
         for(int si=0; si < Ns; ++si)
-	{
-        for(int sj=0; sj < Ns; ++sj)
-	{
-            for (int ci=0; ci < Nc; ++ci)
-	    {
-            for (int cj=0; cj < Nc; ++cj)
-	    {
-                left()()() = a_v[site]()(si,sj)(ci,cj);
-                lret_v[site]()(si,sj)(ci,cj)=left()*b_v[site]();
-            }}
-        }}
+        {
+            for(int sj=0; sj < Ns; ++sj)
+            {
+                for (int ci=0; ci < Nc; ++ci)
+                {
+                    for (int cj=0; cj < Nc; ++cj)
+                    {
+                        left()()() = a_v[site]()(si,sj)(ci,cj);
+                        lret_v[site]()(si,sj)(ci,cj)=left()*b_v[site]();
+                    }
+                }
+            }
+        }
     });
 }
 
