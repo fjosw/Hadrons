@@ -39,6 +39,8 @@ class NPRUtils
 {
 public:
     FERM_TYPE_ALIASES(FImpl,)
+    static void sumPropagator(SpinColourMatrix &res, PropagatorField &prop);
+    static void sumFourQuark(SpinColourSpinColourMatrix &res, SpinColourSpinColourMatrixField &prop);
     static void tensorProd(SpinColourSpinColourMatrixField &lret, PropagatorField &a, PropagatorField &b);
     static void tensorSiteProd(SpinColourSpinColourMatrix &lret, SpinColourMatrixScalar &a, SpinColourMatrixScalar &b);
     // covariant derivative
@@ -46,8 +48,84 @@ public:
         const GaugeField &Umu);
     static void phase(ComplexField &bilinearPhase, std::vector<Real> pIn, std::vector<Real> pOut);
     static void dot(ComplexField &pDotX, std::vector<Real> p);
-
 };
+
+// Decompose the sum for a PropagatorField to be able to run the code on gpus
+template <typename FImpl>
+void NPRUtils<FImpl>::sumPropagator(SpinColourMatrix &res, PropagatorField &prop)
+{
+    for(int si=0; si < Ns; ++si)
+    {
+        for(int sj=0; sj < Ns; ++sj)
+        {
+            auto pjs = peekSpin(prop, si, sj);
+            for (int ci=0; ci < Nc; ++ci)
+            {
+                for (int cj=0; cj < Nc; ++cj)
+                {
+                    const ComplexD val = sum(peekColour(pjs, ci, cj));
+                    res()(si,sj)(ci,cj) = val;
+                }
+            }
+        }
+    }
+}
+
+// template <typename FImpl>
+// void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, SpinColourSpinColourMatrixField &prop)
+// {
+//     for(int si=0; si < Ns; ++si)
+//     {
+//         for(int sj=0; sj < Ns; ++sj)
+//         {
+//             auto pjs = peekSpin(prop, si, sj);
+//             for (int ci=0; ci < Nc; ++ci)
+//             {
+//                 for (int cj=0; cj < Nc; ++cj)
+//                 {
+//                     SpinColourMatrix sub_sum;
+//                     NPRUtils<FImpl>::sumPropagator(sub_sum, peekColour(pjs, ci, cj););
+//                     res()(si,sj)(ci,cj) = sub_sum();
+//                 }
+//             }
+//         }
+//     }
+// }
+
+// Decompose the sum for a SpinColourSpinColourMatrixField to be able to run the code on gpus
+template <typename FImpl>
+void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, SpinColourSpinColourMatrixField &prop)
+{
+    for(int si=0; si < Ns; ++si)
+    {
+        for(int sj=0; sj < Ns; ++sj)
+        {
+            auto pa = peekSpin(prop, si, sj);
+            for (int ci=0; ci < Nc; ++ci)
+            {
+                for (int cj=0; cj < Nc; ++cj)
+                {
+                    auto pb = peekColour(pa, ci, cj);
+                    for(int sk=0; sk < Ns; ++sk)
+                    {
+                        for(int sl=0; sl < Ns; ++sl)
+                        {
+                            auto pc = PeekIndex<4>(pb, sk, sl);
+                            for (int ck=0; ck < Nc; ++ck)
+                            {
+                                for (int cl=0; cl < Nc; ++cl)
+                                {
+                                    const ComplexD val = sum(PeekIndex<3>(pc, ck, cl));
+                                    res()(si,sj)(ci,cj)(sk,sl)(ck,cl) = val;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 // Tensor product of two PropagatorFields (Lattice Spin Colour Matrices in many FImpls)
 template <typename FImpl>

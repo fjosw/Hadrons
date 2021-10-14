@@ -176,7 +176,9 @@ void TFourQuarkFullyConnected<FImpl>::execute()
             bilinear_tmp = bilinear_phase * (g5 * adj(qOut) * g5 * gamma_B * qIn);
             NPRUtils<FImpl>::tensorProd(lret, bilinear, bilinear_tmp);
         }
-        r.corr.push_back( (1.0 / volume) * sum(lret) );
+        SpinColourSpinColourMatrix summed_vertex;
+        NPRUtils<FImpl>::sumFourQuark(summed_vertex, lret);
+        r.corr.push_back( (1.0 / volume) * summed_vertex );
         result.push_back(r);
         //This is all still quite hacky - we probably want to think about the output format a little more!
         r.corr.erase(r.corr.begin());

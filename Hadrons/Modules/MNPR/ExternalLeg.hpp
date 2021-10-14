@@ -147,7 +147,9 @@ void TExternalLeg<FImpl>::execute(void)
     qIn_phased = qIn * exp(-Ci * pDotXIn); // phase corrections
 
     r.info.pIn  = par().pIn;
-    r.corr.push_back( (1.0 / volume) * sum(qIn_phased) );
+    SpinColourMatrix summed_propagator;
+    NPRUtils<FImpl>::sumPropagator(summed_propagator, qIn_phased);
+    r.corr.push_back( (1.0 / volume) * summed_propagator );
 
     saveResult(par().output, "ExternalLeg", r);
     LOG(Message) << "Complete. Writing results to " << par().output << std:: endl;
