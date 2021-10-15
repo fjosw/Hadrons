@@ -119,7 +119,6 @@ void TBilinear<FImpl>::setup(void)
 
     envTmpLat(PropagatorField, "qIn_phased");
     envTmpLat(PropagatorField, "qOut_phased");
-    envTmpLat(PropagatorField, "vertex");
     envTmpLat(ComplexField, "pDotXIn");
     envTmpLat(ComplexField, "pDotXOut");
     envTmpLat(ComplexField, "xMu");
@@ -155,7 +154,6 @@ void TBilinear<FImpl>::execute(void)
     auto  &qOut   = envGet(PropagatorField, par().qOut);
     envGetTmp(PropagatorField, qIn_phased);
     envGetTmp(PropagatorField, qOut_phased);
-    envGetTmp(PropagatorField, vertex);
     envGetTmp(ComplexField, pDotXIn);
     envGetTmp(ComplexField, pDotXOut);
     envGetTmp(ComplexField, xMu);
@@ -186,8 +184,7 @@ void TBilinear<FImpl>::execute(void)
     {
     	r.info.gamma = G.g;
         SpinColourMatrix summed_vertex;
-        vertex = g5 * adj(qOut_phased) * g5 * G * qIn_phased;
-        NPRUtils<FImpl>::sumPropagator(summed_vertex, vertex);
+        NPRUtils<FImpl>::sumPropagator(summed_vertex, g5 * adj(qOut_phased) * g5 * G * qIn_phased);
     	r.corr.push_back( (1.0 / volume) * summed_vertex );
         result.push_back(r);
     	r.corr.erase(r.corr.begin());

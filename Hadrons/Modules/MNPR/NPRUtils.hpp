@@ -39,8 +39,8 @@ class NPRUtils
 {
 public:
     FERM_TYPE_ALIASES(FImpl,)
-    static void sumPropagator(SpinColourMatrix &res, PropagatorField &prop);
-    static void sumFourQuark(SpinColourSpinColourMatrix &res, SpinColourSpinColourMatrixField &prop);
+    static void sumPropagator(SpinColourMatrix &res, const PropagatorField &prop);
+    static void sumFourQuark(SpinColourSpinColourMatrix &res, const SpinColourSpinColourMatrixField &prop);
     static void tensorProd(SpinColourSpinColourMatrixField &lret, PropagatorField &a, PropagatorField &b);
     static void tensorSiteProd(SpinColourSpinColourMatrix &lret, SpinColourMatrixScalar &a, SpinColourMatrixScalar &b);
     // covariant derivative
@@ -52,7 +52,7 @@ public:
 
 // Decompose the sum for a PropagatorField to be able to run the code on gpus
 template <typename FImpl>
-void NPRUtils<FImpl>::sumPropagator(SpinColourMatrix &res, PropagatorField &prop)
+void NPRUtils<FImpl>::sumPropagator(SpinColourMatrix &res, const PropagatorField &prop)
 {
     for(int si=0; si < Ns; ++si)
     {
@@ -72,7 +72,7 @@ void NPRUtils<FImpl>::sumPropagator(SpinColourMatrix &res, PropagatorField &prop
 }
 
 // template <typename FImpl>
-// void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, SpinColourSpinColourMatrixField &prop)
+// void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, const SpinColourSpinColourMatrixField &prop)
 // {
 //     for(int si=0; si < Ns; ++si)
 //     {
@@ -94,7 +94,7 @@ void NPRUtils<FImpl>::sumPropagator(SpinColourMatrix &res, PropagatorField &prop
 
 // Decompose the sum for a SpinColourSpinColourMatrixField to be able to run the code on gpus
 template <typename FImpl>
-void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, SpinColourSpinColourMatrixField &prop)
+void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, const SpinColourSpinColourMatrixField &prop)
 {
     for(int si=0; si < Ns; ++si)
     {
