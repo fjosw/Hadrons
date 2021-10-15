@@ -98,37 +98,12 @@ SpinColourMatrix NPRUtils<FImpl>::sumPropagator(const PropagatorField &prop)
 template <typename FImpl>
 SpinColourSpinColourMatrix NPRUtils<FImpl>::sumFourQuark(const SpinColourSpinColourMatrixField &prop)
 {
-    SpinColourSpinColourMatrix res;
-    for(int si=0; si < Ns; ++si)
-    {
-        for(int sj=0; sj < Ns; ++sj)
-        {
-            auto pa = PeekIndex<1>(prop, si, sj);
-            for (int ci=0; ci < Nc; ++ci)
-            {
-                for (int cj=0; cj < Nc; ++cj)
-                {
-                    auto pb = PeekIndex<2>(pa, ci, cj);
-                    for(int sk=0; sk < Ns; ++sk)
-                    {
-                        for(int sl=0; sl < Ns; ++sl)
-                        {
-                            auto pc = PeekIndex<3>(pb, sk, sl);
-                            for (int ck=0; ck < Nc; ++ck)
-                            {
-                                for (int cl=0; cl < Nc; ++cl)
-                                {
-                                    const ComplexD val = sum(PeekIndex<4>(pc, ck, cl));
-                                    res()(si,sj)(ci,cj)(sk,sl)(ck,cl) = val;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return res;
+    //SpinColourSpinColourMatrix res;
+    autoView(prop_v, prop, CpuRead);
+    Integer osites = prop.Grid()->oSites();
+    auto ssum = sum_cpu(&prop_v[0], osites);
+    prop.Grid()->GlobalSum(ssum);
+    return ssum;
 }
 
 // Tensor product of two PropagatorFields (Lattice Spin Colour Matrices in many FImpls)
