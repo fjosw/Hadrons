@@ -183,9 +183,7 @@ void TBilinear<FImpl>::execute(void)
     for (auto &G: Gamma::gall)
     {
     	r.info.gamma = G.g;
-        SpinColourMatrix summed_vertex;
-        NPRUtils<FImpl>::sumPropagator(summed_vertex, g5 * adj(qOut_phased) * g5 * G * qIn_phased);
-    	r.corr.push_back( (1.0 / volume) * summed_vertex );
+    	r.corr.push_back( (1.0 / volume) * NPRUtils<FImpl>::sumPropagator(g5 * adj(qOut_phased) * g5 * G * qIn_phased) );
         result.push_back(r);
     	r.corr.erase(r.corr.begin());
     }

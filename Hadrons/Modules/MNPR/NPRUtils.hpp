@@ -39,8 +39,8 @@ class NPRUtils
 {
 public:
     FERM_TYPE_ALIASES(FImpl,)
-    static void sumPropagator(SpinColourMatrix &res, const PropagatorField &prop);
-    static void sumFourQuark(SpinColourSpinColourMatrix &res, const SpinColourSpinColourMatrixField &prop);
+    static SpinColourMatrix sumPropagator(const PropagatorField &prop);
+    static SpinColourSpinColourMatrix sumFourQuark(const SpinColourSpinColourMatrixField &prop);
     static void tensorProd(SpinColourSpinColourMatrixField &lret, PropagatorField &a, PropagatorField &b);
     static void tensorSiteProd(SpinColourSpinColourMatrix &lret, SpinColourMatrixScalar &a, SpinColourMatrixScalar &b);
     // covariant derivative
@@ -52,8 +52,9 @@ public:
 
 // Decompose the sum for a PropagatorField to be able to run the code on gpus
 template <typename FImpl>
-void NPRUtils<FImpl>::sumPropagator(SpinColourMatrix &res, const PropagatorField &prop)
+SpinColourMatrix NPRUtils<FImpl>::sumPropagator(const PropagatorField &prop)
 {
+    SpinColourMatrix res;
     for(int si=0; si < Ns; ++si)
     {
         for(int sj=0; sj < Ns; ++sj)
@@ -69,6 +70,7 @@ void NPRUtils<FImpl>::sumPropagator(SpinColourMatrix &res, const PropagatorField
             }
         }
     }
+    return res;
 }
 
 // template <typename FImpl>
@@ -94,8 +96,9 @@ void NPRUtils<FImpl>::sumPropagator(SpinColourMatrix &res, const PropagatorField
 
 // Decompose the sum for a SpinColourSpinColourMatrixField to be able to run the code on gpus
 template <typename FImpl>
-void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, const SpinColourSpinColourMatrixField &prop)
+SpinColourSpinColourMatrix NPRUtils<FImpl>::sumFourQuark(const SpinColourSpinColourMatrixField &prop)
 {
+    SpinColourSpinColourMatrix res;
     for(int si=0; si < Ns; ++si)
     {
         for(int sj=0; sj < Ns; ++sj)
@@ -125,6 +128,7 @@ void NPRUtils<FImpl>::sumFourQuark(SpinColourSpinColourMatrix &res, const SpinCo
             }
         }
     }
+    return res;
 }
 
 // Tensor product of two PropagatorFields (Lattice Spin Colour Matrices in many FImpls)
