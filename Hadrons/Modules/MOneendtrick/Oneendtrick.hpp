@@ -44,7 +44,9 @@ BEGIN_HADRONS_NAMESPACE
 
  * options:
  - solver: The solver with which the stochastic source should be inverted.
- - t: temporal position of the stochastic source
+ - t: temporal position of the stochastic source, if -1 is specified a random
+      position is chosen for each configuration. The data is always shifted such
+      that the source resides on the first entry of the output.
  - output: filestem the output should be saved in
 
  * possible extensions:
@@ -63,7 +65,7 @@ class OneendtrickPar: Serializable
 public:
     GRID_SERIALIZABLE_CLASS_MEMBERS(OneendtrickPar,
                                     std::string, solver,
-                                    unsigned int, t,
+                                    signed int, t,
                                     std::string, output);
 };
 
@@ -96,12 +98,12 @@ protected:
     // execution
     virtual void execute(void);
 private:
-    void prepareU1source(FermionField &src);
+    void prepareU1source(signed int xT, FermionField &src);
     void solveFermion(FermionField &solution,
                     const FermionField &source);
 private:
-    bool        hasT_{false};
-    std::string tName_;
+    bool         hasT_{false};
+    std::string  tName_;
     unsigned int Ls_;
     Solver       *solver_{nullptr};
 };
@@ -170,10 +172,10 @@ void TOneendtrick<FImpl>::setup(void)
 
 // execution ///////////////////////////////////////////////////////////////////
 template <typename FImpl>
-void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
+void TOneendtrick<FImpl>::prepareU1source(signed int xT, FermionField &src)
 {
-    auto    &t_tmp   = envGet(Lattice<iScalar<vInteger>>, tName_);
-    Complex                         Ci(0.0,1.0);
+    auto        &t_tmp = envGet(Lattice<iScalar<vInteger>>, tName_);
+    Complex     Ci(0.0,1.0);
 
     if (!hasT_)
     {
@@ -183,10 +185,9 @@ void TOneendtrick<FImpl>::prepareU1source(FermionField &src)
 
     envGetTmp(FermionField, rng_field);
 
-    LOG(Message) << "Preparing U1 source" << std::endl;
     random(rng4d(), rng_field); // Uniform complex random number
     rng_field = exp(Ci*2.0*M_PI*real(rng_field));
-    rng_field = where((t_tmp >= par().t) and (t_tmp <= par().t), rng_field, 0.*rng_field);
+    rng_field = where((t_tmp >= xT) and (t_tmp <= xT), rng_field, 0.*rng_field);
     src = rng_field;
     LOG(Message) << "Prepared source with norm " << norm2(src) << std::endl;
 }
@@ -262,7 +263,29 @@ void TOneendtrick<FImpl>::execute(void)
     envGetTmp(FermionField, chi);
     envGetTmp(FermionField, psi);
 
-    prepareU1source(eta);    
+    signed int xT;
+    if (par().t >= 0 && par().t < nt)
+    {
+        xT = par().t;
+        LOG(Message) << "Preparing U1 source at t = " << xT << std::endl;
+    }
+    else
+    {
+        if (par().t == -1)
+        {
+            Real rand;
+            random(rngSerial(),rand);
+            xT = (int)(rand * nt);
+            LOG(Message) << "Preparing U1 source at random value t = " << xT << std::endl;
+        }
+        else
+        {
+            LOG(Message) << "Invalid value for t" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    prepareU1source(xT, eta);
 
     solveFermion(chi, eta);
 
@@ -278,7 +301,10 @@ void TOneendtrick<FImpl>::execute(void)
 
         for (unsigned int t = 0; t < nt; ++t)
         {
-            result[i].corr[t] = res_vector[t];
+            if (t >= xT)
+                result[i].corr[t-xT] = res_vector[t];
+            else
+                result[i].corr[nt-xT+t] = res_vector[t];
         }
     }
 
