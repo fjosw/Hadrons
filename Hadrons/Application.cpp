@@ -190,6 +190,9 @@ void Application::run(void)
             statLogger.start();
         }
     }
+
+    linear_schedule();
+
     if (getPar().saveSchedule or getPar().scheduleFile.empty())
     {
         schedule();
@@ -290,6 +293,21 @@ void Application::schedule(void)
     {
         program_   = vm().schedule(par_.genetic);
         scheduled_ = true;
+    }
+}
+
+void Application::linear_schedule(void)
+{
+    if (!scheduled_ and !loadedSchedule_)
+    {
+        db_.execute(
+        "DELETE FROM schedule;                              "
+        "INSERT INTO schedule                               "
+        "SELECT moduleID as step, moduleID from modules;    "
+        );
+        program_ = vm().dbRestoreSchedule();
+        scheduled_ = true;
+        LOG(Message) << "Linear schedule performed." << std::endl;
     }
 }
 

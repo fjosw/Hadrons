@@ -114,6 +114,7 @@ public:
     void saveParameterFile(const std::string parameterFileName, unsigned int prec = 15);
     // schedule computation
     void schedule(void);
+    void linear_schedule(void);
     void saveSchedule(const std::string filename);
     void loadSchedule(const std::string filename);
     void printSchedule(void);
